@@ -11,6 +11,10 @@ def bino_data_preprocess(data_fname, err_fname):
     
     Note that error is set to infinity (i.e., 1e30) wherever NaN appears in the image.
 
+	Args:
+		- data_fname: File address for the image data.
+		- err_fname: File address for the error.
+
     """
     #---- Loading in the 2D data for St82-1hr
     data2D = fits.open(data_fname)
