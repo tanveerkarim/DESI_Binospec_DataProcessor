@@ -15,6 +15,10 @@ def bino_data_preprocess(data_fname, err_fname):
 		- data_fname: File address for the image data.
 		- err_fname: File address for the error.
 
+	Return: 
+		- data: Self-explantory.
+		- header: A list of corresponding headers extracted from HDU. 
+
     """
     #---- Loading in the 2D data for St82-1hr
     data2D = fits.open(data_fname)
