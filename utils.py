@@ -3,21 +3,11 @@ import numpy as np
 
 def bino_data_preprocess(data_fname, err_fname):
     """
-    Import data and its errors and return a list of length (Nobjs+1), where each element
-    corresponds to an image of (num_rows, num_cols, 2): the first channel correspond to the image,
-    and the second to the errors. 
-
-    +1 is for the first empty HDU. num_rows and num_cols vary over different spectra. 
+    Import data and corresponding errors and return a list of length (Nobjs+1), where each element
+    corresponds to an image of (num_rows, num_cols, 2). +1 is for the first empty HDU.
+    num_rows and num_cols can vary.
     
-    Note that error is set to infinity (i.e., 1e30) wherever NaN appears in the image.
-
-	Args:
-		- data_fname: File address for the image data.
-		- err_fname: File address for the error.
-
-	Return: 
-		- data: Self-explantory.
-		- header: A list of corresponding headers extracted from HDU. 
+    Note that error is set to infinity wherever NaN appears in the image.
 
     """
     #---- Loading in the 2D data for St82-1hr
@@ -29,10 +19,10 @@ def bino_data_preprocess(data_fname, err_fname):
     data = [None] #
     header = [None]
 
-    #---- Loop through the imported data. Multiply by a common factor 1e16 to adjust the overall scale.
+    #---- Loop through the imported data. Multiply by a common factor 1e15 to adjust the overall scale.
     for i in range(1, Nobjs+1):
-        im = np.copy(data2D[i].data) * 1e16
-        err = np.copy(data2D_err[i].data) * 1e16
+        im = np.copy(data2D[i].data) * 1e15
+        err = np.copy(data2D_err[i].data) * 1e15
         num_rows, num_cols = im.shape
         
         # Find pixels in the image or error that has NaN values
