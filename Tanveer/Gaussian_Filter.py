@@ -81,3 +81,20 @@ def DataProcessor(imagefile, errorfile, idx = 48):
 	plt.imshow(ivar,  vmin=-4, vmax=4, aspect = 'auto', cmap = 'gray', interpolation = 'None')
 	plt.colorbar()
 	plt.savefig("Image+Ivar_" + str(idx) + ".pdf", dpi = 600, bbox_inches = None)
+
+	#Generate physical wavelength grid
+	Nobjs = 64
+	i = 1
+	crval1_600 = float(str(header).split("CRVAL1")[1].split("=")[1].split("/")[0])
+	cdelt1_600 = float(str(header).split("CRVAL1")[1].split("=")[2].split("/")[0])
+	
+	for i in np.arange(2, Nobjs):
+		tmp1 = float(str(header).split("CRVAL1")[1].split("=")[1].split("/")[0])
+		tmp2 = float(str(header).split("CRVAL1")[1].split("=")[2].split("/")[0])    
+		if np.abs(tmp1-crval1_600)>1e-6:
+			print(tmp1)
+		if np.abs(tmp2-cdelt1_600)>1e-6:
+			print(tmp2)
+			
+	wave_grid_600 = crval1_600 + cdelt1_600 * np.arange(image[1].shape[0])
+	wave_grid_600 *= 10
