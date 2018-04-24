@@ -72,3 +72,12 @@ def DataProcessor(imagefile, errorfile, idx = 48):
 	image = data[idx][:, :, 0]
 	err = data[idx][:, :, 1]
 	ivar = 1/err**2 #2D inverse variance
+	
+	#Generate a plot of the 2D spectrum and inverse variance
+	plt.subplot(2, 1, 1)
+	plt.imshow(image, aspect = 'auto',  vmin=-4, vmax=4, cmap = 'gray', interpolation = 'None')
+	plt.colorbar()
+	plt.subplot(2, 1, 2)
+	plt.imshow(ivar,  vmin=-4, vmax=4, aspect = 'auto', cmap = 'gray', interpolation = 'None')
+	plt.colorbar()
+	plt.savefig("Image+Ivar_" + str(idx) + ".pdf", dpi = 600, bbox_inches = None)
