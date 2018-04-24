@@ -98,3 +98,12 @@ def DataProcessor(imagefile, errorfile, idx = 48):
 			
 	wave_grid_600 = crval1_600 + cdelt1_600 * np.arange(image[1].shape[0])
 	wave_grid_600 *= 10
+	
+	#Generate profile and raw spectrum
+	profile = image.sum(axis=1)
+	plt.plot(profile)
+	plt.savefig("Profile_" + str(idx) + ".pdf", dpi = 600, bbox_inches = None)
+	
+	spectrumRaw = image.sum(axis=0)
+	plt.plot(wave_grid_600, spectrumRaw)
+	plt.savefig("SpectrumRaw_" + str(idx) + ".pdf", dpi = 600, bbox_inches = None)
