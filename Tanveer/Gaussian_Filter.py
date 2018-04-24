@@ -18,3 +18,40 @@ def ModelDoublet(params, Amp = 1, std = 0.75): #Default, A = 1, std = 0.75
     
     return Amp*(Gaussian(wavelength, lambda0-separation, std) + Gaussian(wavelength, lambda0+separation, std))
 
+def SNR_Calculator(wavelength, spatial, err):
+    """Constructs ndarray of SNRs such that SNR(redshift, linewidth)
+    Parameters: wavelength: array of wavelength range over which to test the filter
+                spatial: array of spetial dimension corresponding to the wavelength range
+                err: 2D error array
+                
+    Returns: SNR: Signal-to-noise ratios of Amplitude
+             z: Redshift array
+			 width: linewidth array
+    """
+    
+    lambda0_emitted = 3727.092 + (3729.875-3727.092)/2 #Midpoint of OII doublet
+    
+    #Initialise numpy arrays
+    width = np.arange(0.1, 2.1, .1) #To calculate SNR at different linewidth
+    z = np.zeros(len(wavelength))
+    SNR = np.zeros((len(width), len(wavelength))) #linewidth vs z grid
+    dataPrime = spatial/err #signal of data
+    
+    #Calculate SNR at different lambda0 and w
+    for i in range(len(wavelength)):
+        for j in range(len(width)):
+            lambda0 = wavelength[i]
+            modelSpatial = Model((wavelength, lambda0), 1, width[j])
+            modelPrime = modelSpatial/err
+            
+            """A = (SpatialPrime (dot) modelPrime)/(modelPrime (dot) modelPrime)
+            sigmaA = 1/sqrt(modelPrime (dot) modelPrime)
+            SNR = A/sigmaA"""
+            sigmaA = 1./np.sqrt(np.dot(modelPrime, modelPrime))
+            A = np.dot(dataPrime, modelPrime)/(sigmaA**(-2))
+            SNR[j][i] = A/sigmaA
+            
+        #Convert lambda0 to z
+        z[i] = lambda0/lambda0_emitted - 1
+    
+    return SNR, z, width
