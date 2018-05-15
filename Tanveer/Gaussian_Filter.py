@@ -4,62 +4,59 @@ import seaborn as sns
 import time
 plt.style.use('ggplot')
 
-def ModelDoublet(params, Amp = 1, std = 0.75): #Default, A = 1, std = 0.75
-    """Returns the [OII]
-    Parameters: Amp: Amplitude of the Gaussian
+def Model(params, Amp = 1, std = 0.75): #Default, A = 1, std = 0.75
+	"""Returns the [OII]
+	Parameters: Amp: Amplitude of the Gaussian
 				std: sigma of the Gaussian
-                params: tuple of wavelength range and lambda0 (centre point of the doublet Model)
-    """
-    
-    wavelength, lambda0 = params
-    Gaussian = lambda x, mean, std: np.exp(-((x - mean)/std)**2)
-    
-    #Values from http://classic.sdss.org/dr6/algorithms/linestable.html
-    separation = (3729.875-3727.092)/2 #separation between lambda0 and the emission lines
-    
-    return Amp*(Gaussian(wavelength, lambda0-separation, std) + Gaussian(wavelength, lambda0+separation, std))
+				params: tuple of wavelength range and lambda0 (centre point of the doublet Model)
+	"""
+	
+	wavelength, lambda0 = params
+	Gaussian = lambda x, mean, std: np.exp(-((x - mean)/std)**2)
+	
+	#Values from http://classic.sdss.org/dr6/algorithms/linestable.html
+	separation = (3729.875-3727.092)/2 #separation between lambda0 and the emission lines
+	
+	return Amp*(Gaussian(wavelength, lambda0-separation, std) + Gaussian(wavelength, lambda0+separation, std))
 
 def SNR_Calculator(wavelength, spatial, err):
-    """Constructs ndarray of SNRs such that SNR(redshift, linewidth)
-    Parameters: wavelength: array of wavelength range over which to test the filter
-                spatial: array of spetial dimension corresponding to the wavelength range
-                err: 2D error array
-                
-    Returns: SNR: Signal-to-noise ratios of Amplitude
-             z: Redshift array
+	"""Constructs ndarray of SNRs such that SNR(redshift, linewidth)
+	Parameters: wavelength: array of wavelength range over which to test the filter
+				spatial: array of spetial dimension corresponding to the wavelength range
+				err: 2D error array
+				
+	Returns: SNR: Signal-to-noise ratios of Amplitude
+			 z: Redshift array
 			 width: linewidth array
-    """
-    
-    lambda0_emitted = 3727.092 + (3729.875-3727.092)/2 #Midpoint of OII doublet
-    
-    #Initialise numpy arrays
-    width = np.arange(0.1, 2.1, .1) #To calculate SNR at different linewidth
-    z = np.zeros(len(wavelength))
-    SNR = np.zeros((len(width), len(wavelength))) #linewidth vs z grid
-    dataPrime = spatial/err #signal of data
-    
-    #Calculate SNR at different lambda0 and w
-    for i in range(len(wavelength)):
-        for j in range(len(width)):
-            """Potentially solve the loop issue by starting with an 
-			arbitary linewidth w and finding zmax; Then for given zmax,
-			test different w"""
-			
+	"""
+	
+	lambda0_emitted = 3727.092 + (3729.875-3727.092)/2 #Midpoint of OII doublet
+	
+	#Initialise numpy arrays
+	width = np.arange(0.1, 2.1, .1) #To calculate SNR at different linewidth
+	z = np.zeros(len(wavelength))
+	SNR = np.zeros((len(width), len(wavelength))) #linewidth vs z grid
+	dataPrime = spatial/err #signal of data
+	
+	#Calculate SNR at different lambda0 and w
+	for i in range(len(wavelength)):
+		for j in range(len(width)):
+			"""Potentially solve the loop issue by starting with an arbitary linewidth w and finding zmax; then for given zmax, test different w"""
 			lambda0 = wavelength[i]
-            modelSpatial = Model((wavelength, lambda0), 1, width[j])
-            modelPrime = modelSpatial/err
-            
-            """A = (SpatialPrime (dot) modelPrime)/(modelPrime (dot) modelPrime)
-            sigmaA = 1/sqrt(modelPrime (dot) modelPrime)
-            SNR = A/sigmaA"""
-            sigmaA = 1./np.sqrt(np.dot(modelPrime, modelPrime))
-            A = np.dot(dataPrime, modelPrime)/(sigmaA**(-2))
-            SNR[j][i] = A/sigmaA
-            
-        #Convert lambda0 to z
-        z[i] = lambda0/lambda0_emitted - 1
-    
-    return SNR, z, width
+			modelSpatial = Model((wavelength, lambda0), 1, width[j])
+			modelPrime = modelSpatial/err
+			
+			"""A = (SpatialPrime (dot) modelPrime)/(modelPrime (dot) modelPrime)
+			sigmaA = 1/sqrt(modelPrime (dot) modelPrime)
+			SNR = A/sigmaA"""
+			sigmaA = 1./np.sqrt(np.dot(modelPrime, modelPrime))
+			A = np.dot(dataPrime, modelPrime)/(sigmaA**(-2))
+			SNR[j][i] = A/sigmaA
+			
+		#Convert lambda0 to z
+		z[i] = lambda0/lambda0_emitted - 1
+	
+	return SNR, z, width
 	
 def DataProcessor(imagefile, errorfile, idx = 48):
 	"""Uses Jae's code to process BinoSpec data
@@ -91,12 +88,11 @@ def DataProcessor(imagefile, errorfile, idx = 48):
 	
 	for i in np.arange(2, Nobjs):
 		tmp1 = float(str(header).split("CRVAL1")[1].split("=")[1].split("/")[0])
-		tmp2 = float(str(header).split("CRVAL1")[1].split("=")[2].split("/")[0])    
+		tmp2 = float(str(header).split("CRVAL1")[1].split("=")[2].split("/")[0])	
 		if np.abs(tmp1-crval1_600)>1e-6:
 			print(tmp1)
 		if np.abs(tmp2-cdelt1_600)>1e-6:
 			print(tmp2)
-			
 	wave_grid_600 = crval1_600 + cdelt1_600 * np.arange(image[1].shape[0])
 	wave_grid_600 *= 10
 	
@@ -109,12 +105,10 @@ def DataProcessor(imagefile, errorfile, idx = 48):
 	spectrumRaw = image.sum(axis=0)
 	plt.clf()
 	plt.plot(wave_grid_600, spectrumRaw)
-	plt.savefig("SpectrumRaw_" + str(idx) + ".pdf", dpi = 600, bbox_inches = None
-	
+	plt.savefig("SpectrumRaw_" + str(idx) + ".pdf", dpi = 600, bbox_inches = None)
 	
 	#Generate cleaned spectrum
-	spectrumClean = np.sum(np.multiply(image.T, np.multiply(ivar.T, profile)).T, axis = 0) \
-	/np.sum(np.multiply(ivar.T, profile).shape)
+	spectrumClean = np.sum(np.multiply(image.T, np.multiply(ivar.T, profile)).T, axis = 0)/np.sum(np.multiply(ivar.T, profile).T, axis = 0)
 	"""Need to figure out how to construct the 1D error array"""
 	#errClean = 1/np.sqrt(np.sum(np.multiply(ivar.T, profile).T, axis = 0)) 
 	errClean = 0.1 #For now use this dummy value
@@ -124,7 +118,7 @@ def DataProcessor(imagefile, errorfile, idx = 48):
 	
 	return wave_grid_600, spectrumClean, errClean
 
-idx = 48
+idx = 25
 wavegrid1d, spectra1d, err1d = DataProcessor("../../data/v1/st82-1hr-600/obj_abs_slits_lin.fits", 
 "../../data/v1/st82-1hr-600/obj_abs_err_slits_lin.fits", idx)
 
@@ -136,7 +130,7 @@ print("--- %s seconds ---" % (time.time() - start_time)) #Time taken to run code
 ax = sns.heatmap(SNR, linewidth=0.01)#, xticklabels=z, yticklabels=w)
 ax.set(xlabel='Redshift z', ylabel='Line width w')
 plt.clf()
-plt.savefig("w_vs_z_grid1_" + str(idx) + ".pdf", dpi = 600, bbox_inches = None)
+#plt.savefig("w_vs_z_grid1_" + str(idx) + ".pdf", dpi = 600, bbox_inches = None)
 plt.clf()
 plt.imshow(SNR, aspect='auto')
 plt.colorbar()
@@ -146,6 +140,7 @@ plt.savefig("w_vs_z_grid2_" + str(idx) + ".pdf", dpi = 600, bbox_inches = None)
 print('Maximum SNR is ' + str(SNR.max()))
 
 #Plot 1D spectra vs z for SNR.max
+plt.clf()
 plt.plot(z, SNR[np.where(SNR == SNR.max())[0][0]])
 plt.axhline(7)
 plt.xlabel('z')
