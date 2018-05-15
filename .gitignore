@@ -2,3 +2,5 @@ Tanveer/__pycache__/*.pyc
 Tanveer/utils.py
 Tanveer/.ipynb_checkpoints/*
 Tanveer/*.pdf
+Tanveer/Specz_Extractor/__pycache__/*
+Tanveer/Specz_Extractor/.ipynb_checkpoints/*
