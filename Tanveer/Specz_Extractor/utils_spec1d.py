@@ -2,7 +2,8 @@ from astropy.io import fits
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
-
+from scipy.ndimage.filters import median_filter
+import os
 
 def preprocess_bino(fname_data, fname_err, data_dir):
 	"""
@@ -49,6 +50,15 @@ def preprocess_bino(fname_data, fname_err, data_dir):
 		ibool = np.logical_or(np.isnan(err_tmp), np.isnan(data_tmp), err_tmp <=0.)
 		data_tmp[ibool] = 0
 		err_tmp[ibool] = infinity
+
+		# ---- Trim the data
+		idx_min, idx_max = index_edges(data_tmp)
+		L_trim = 50
+		data_tmp[:, :idx_min+L_trim] = 0
+		data_tmp[:, idx_max-L_trim:] = 0
+		err_tmp[:, :idx_min+L_trim] = infinity
+		err_tmp[:, idx_max-L_trim:] = infinity
+
 
 		# ---- Save data
 		# Nrows = min(32, data_tmp.shape[0])
@@ -99,120 +109,230 @@ def extract_single_data(data_err, list_headers, specnum):
 def ivar_from_err(err):
 	return 1./np.square(err)
 
-def naive_profile(data, ivar):
+def naive_profile(data, ivar, idx_min=0, idx_max=-1, L_trim = 500):
 	"""
 	Assumes D_ij ~ Norm(f_j * k_i, sig_ij) where f_j = f.
 	"""
+	if L_trim > 0:
+		data = data[:, idx_min+L_trim:idx_max-L_trim]
+		ivar = ivar[:, idx_min+L_trim:idx_max-L_trim]
 	K = np.sum(data * ivar, axis = 1) / np.sum(ivar, axis = 1)
 	K /= np.sum(K) # Normalization step.
 	return K 
 
+def produce_spec1D(data_err, list_headers, sig_K):
+	"""
+	Given 2D spectrum and the extraction kernel width sig_K,
+	produce 1D spectra (Ntargets+1, 2, Ncols) and their inverse variance.
+	"""
+	data_ivar_1D = np.zeros((data_err.shape[0], 2, data_err.shape[3]))
+	for specnum in range(1, len(list_headers)):
+		data, err, header = extract_single_data(data_err, list_headers, specnum)
+		ivar = ivar_from_err(err)
 
-def extraction_kernel(data_err, list_headers, save_fig=None):
+		spec1D_ivar = np.sum(np.square(K_T) * ivar, axis=0)
+		spec1D = np.sum(K_T * data * ivar, axis=0) / spec1D_ivar
+		
+		data_ivar_1D[specnum, 0] = spec1D
+		data_ivar_1D[specnum, 1] = spec1D_ivar
+	return data_ivar_1D
+		
+def SIDE_from_header(header):
+	return header["SIDE"]
+
+def index_edges(data, num_thres=20):
+	"""
+	Given long postage stamp of data, return the edges.
+	"""
+	idx_min = 0
+	idx_max = data.shape[1]-1
+	tally = np.sum(data == 0., axis=0)
+	while tally[idx_min] > num_thres:
+		idx_min += 1
+	while tally[idx_max] > num_thres:
+		idx_max -=1
+	return idx_min, idx_max
+
+def gauss_fit2profile(K):
+	# ---- Grid search for mu and sigma for the best Gaussian representation of the empirical kernel.
+	Nrows = 32 
+	mu_arr = np.arange(5, 20, 0.1)
+	sig_arr = np.arange(1., 3., 0.05)
+	chi_arr = np.zeros((mu_arr.size, sig_arr.size))
+	x_arr = np.arange(0, Nrows, 1)
+	for i, mu in enumerate(mu_arr):
+		for j, sig in enumerate(sig_arr):
+			A = np.exp(-np.square(x_arr-mu) / (2 * sig**2)) / (np.sqrt(2 * np.pi) * sig)
+			chi_arr[i, j] = np.sum(np.square(K - A))
+	# ---- Best fit
+	idx = np.unravel_index(np.argmin(chi_arr), chi_arr.shape)
+	mu_best = mu_arr[idx[0]] 
+	sig_best = sig_arr[idx[1]]
+	
+	return mu_best, sig_best
+
+def extract_stellar_profiles(data_err, list_headers):
+	K_collection = []
+	for specnum in range(1, len(list_headers)):
+		data, err, header = extract_single_data(data_err, list_headers, specnum)
+		ivar = ivar_from_err(err)
+
+		BIT = bit_from_header(header)
+		# ---- Perform optimal extraction 1D spectrum from 2D
+		if (BIT == 2):
+			idx_min, idx_max = index_edges(data)
+			K = naive_profile(data, ivar, idx_min, idx_max, L_trim = 500)
+			K_collection.append(K) # Collect K into a list.
+	return K_collection
+		
+def remove_outlier(arr, std_thres = 2):
+	"""
+	Remove outliers in 1D array by sigma clipping.
+	"""
+	std = np.std(arr)
+	mu = np.median(arr)
+	
+	return arr[(arr - mu) < (std_thres * std)]
+
+
+def extraction_kernel_sig(K_collection):
+	"""
+	Based on the extracted stellar profiles, 
+	compute a reasonable gaussian extraction kernal
+	width (sigma).
+	"""
+	# Array of estimates gaussian means and widths
+	K_gauss_mus = np.zeros(len(K_collection))
+	K_gauss_sig = np.zeros(len(K_collection))
+	for i in range(len(K_collection)):
+		mu_best, sig_best = gauss_fit2profile(K_collection[i])    
+		K_gauss_mus[i] = mu_best
+		K_gauss_sig[i] = sig_best
+
+	return np.median(K_gauss_sig)
+
+def K_gauss_profile(mu, sig, Nrows = 32):
+	"""
+	Generate gaussian extraction profile of length Nrows
+	given mu and sig.
+	"""
+	x_arr = np.arange(0, Nrows, 1)
+	K_gauss = np.exp(-(x_arr - mu)**2 / (2 * sig**2))
+	K_gauss /= np.sum(K_gauss)
+	
+	return K_gauss
+
+def plot_kernels(K_collection, K_extract, fname):
+	"""
+	Plot the collection of stellar kernels and the ultimate
+	extraction kernel at the center.
+	"""
+
+	fig, ax = plt.subplots(1, figsize=(10, 5))
+	for i in range(len(K_collection)):
+		ax.plot(K_collection[i], c="red", lw=0.5)    
+	ax.plot(K_extract, c="blue", lw=1.5)
+	ax.set_ylim([-0.03, 0.3])
+	ax.axhline(y=0, c="black", ls="--", lw=1.)
+	plt.savefig(fname, dpi=200, bbox_inches="tight")
+#     plt.show()
+	plt.close()
+
+	return
+
+
+def K_gauss_profile(mu, sig, Nrows = 32):
+	"""
+	Generate gaussian extraction profile of length Nrows
+	given mu and sig.
+	"""
+	x_arr = np.arange(0, Nrows, 1)
+	K_gauss = np.exp(-(x_arr - mu)**2 / (2 * sig**2))
+	K_gauss /= np.sum(K_gauss)
+	
+	return K_gauss
+
+
+def produce_spec1D(data_err, list_headers, sig_K, fname_prefix=None, verbose=True):
     """
-    Given data_err array (Ntargets+1, 2, Nrows, Ncols) and headers, compute an extraction kernel
-    using the following ad hoc recipe.
-    - For each F-star observed, compute naive kernel using naive_profile function. 
-    - K_combined: Find the maximum of the union of F-star naive profiles at each row pixel position.
-    Also, any negative value is set equal to zero.
-    - K_filtered: Apply savgol_filter with window_length=9 and polyorder=3 to smooth. Any negative value is 
-    set equal to zero.
-    - K_gauss: Based on K_filtered, find the best fitting gaussian using grid search method.
-    - K_final: Maximum of the K_gauss and K_filtered.
-    """
-    K_collection = []
-    K_combined = None
-    for specnum in range(1, len(list_headers)):
-        data, err, header = extract_single_data(data_err, list_headers, specnum)
-        ivar = ivar_from_err(err)
-
-        BIT = bit_from_header(header)
-        # ---- Perform optimal extraction 1D spectrum from 2D
-        if (BIT == 2):
-            K = naive_profile(data, ivar)
-            K_collection.append(K) # Collect K into a list.
-        
-    # ---- Combined kernel
-    K_arr = np.zeros((len(K_collection), K.size))
-    for i in range(len(K_collection)):
-    	K_arr[i] = K_collection[i]
-    K_combined = np.percentile(K_arr, 80, axis=0)
-    K_combined /= np.sum(K_combined)    
-    
-    # ---- Filtered kernel
-    K_filtered = savgol_filter(K_combined, window_length=9, polyorder=3)
-    K_filtered = np.maximum(0, K_filtered)
-    K_filtered /= np.sum(K_filtered) # Normalized the filter    
-    
-    
-    # ---- Grid search for mu and sigma for the best Gaussian representation of the empirical kernel.
-    Nrows = 32 
-    mu_arr = np.arange(5, 20, 0.05)
-    sig_arr = np.arange(3, 10, 0.05)
-    chi_arr = np.zeros((mu_arr.size, sig_arr.size))
-    x_arr = np.arange(0, Nrows, 1)
-    for i, mu in enumerate(mu_arr):
-        for j, sig in enumerate(sig_arr):
-            A = np.exp(-np.square(x_arr-mu) / (2 * sig**2)) / (np.sqrt(2 * np.pi) * sig)
-            chi_arr[i, j] = np.sum(np.square(K_filtered - A))
-    # ---- Best fit
-    idx = np.unravel_index(np.argmin(chi_arr), chi_arr.shape)
-    mu_best = mu_arr[idx[0]] 
-    sig_best = sig_arr[idx[1]] + 0.5 # Intentional broadening
-
-    # ---- K_gauss
-    K_gauss = np.exp(-np.square(x_arr-mu_best) / (2 * sig_best**2)) / (np.sqrt(2 * np.pi) * sig_best)
-
-    # ---- K_final 
-    K_final = np.minimum(K_gauss, K_filtered)
-    K_final /= np.sum(K_final)
-    
-    if save_fig is not None:
-        plt.close()
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize = (10, 10))
-        # ---- K_collection and combined
-        ax1.plot(range(K_combined.size), K_combined, c="blue", lw=2., label="K_combined")
-        for i in range(len(K_collection)):
-            ax1.plot(range(K_combined.size), K_collection[i], c="red", lw=0.5)
-        ax1.set_ylim([-0.05, 0.3])
-        ax1.legend(loc="upper right", fontsize=15)
-        ax1.axhline(y=0., lw=1, ls="--", c="black")
-        # ---- K_combined and filtered
-        ax2.plot(range(K_combined.size), K_filtered, c="blue", lw=2., label="K_filtered")
-        for i in range(len(K_collection)):
-            ax2.plot(range(K_combined.size), K_collection[i], c="red", lw=0.5)        
-        ax2.set_ylim([-0.05, 0.3])            
-        ax2.axhline(y=0., lw=1, ls="--", c="black")
-        ax2.legend(loc="upper right", fontsize=15)
-        # ---- K_filtered and final
-        ax3.plot(range(K_combined.size), K_gauss, c="black", lw=2., label="K_gauss")
-        ax3.plot(range(K_combined.size), K_final, c="blue", lw=2., label="K_final")
-        for i in range(len(K_collection)):
-            ax3.plot(range(K_combined.size), K_collection[i], c="red", lw=0.5)                
-        ax3.axhline(y=0., lw=1, ls="--", c="black")
-        ax3.set_ylim([-0.05, 0.3])        
-        ax3.legend(loc="upper right", fontsize=15)
-
-        plt.savefig(save_fig, dpi=200, bbox_inches = "tight")
-        plt.close()
-
-    return K_collection, K_combined, K_filtered, K_gauss, K_final
-        
-
-def produce_spec1D(data_err, list_headers, K):
-    """
-    Given 2D spectrum and the extraction kernel K,
+    Given 2D spectrum and the extraction kernel width sig_K,
     produce 1D spectra (Ntargets+1, 2, Ncols) and their inverse variance.
     """
-    K_T = K.reshape((K.size, 1))
+    Ncols = 32    
     data_ivar_1D = np.zeros((data_err.shape[0], 2, data_err.shape[3]))
+
     for specnum in range(1, len(list_headers)):
+        if verbose and ((specnum % 10) == 0):
+            print("Processing spec num: %d" % specnum)
+
+        # ---- Extract the individual data
         data, err, header = extract_single_data(data_err, list_headers, specnum)
         ivar = ivar_from_err(err)
+
+        # ---- Compute the center of the extraction
+        idx_min, idx_max = index_edges(data)
+
+        # ---- Algorithmically determine the row location of the spectra.
+        # Note that I assume the center of the spectrum falls between 10 and 20.
+        row_centers = []
+        data_tmp = np.copy(data)
+        ivar_tmp = np.copy(ivar)
+        data_tmp[:10, :] = 0.
+        data_tmp[20:, :] = 0.        
+        ivar_tmp[:10, :] = 1e-120
+        ivar_tmp[20:, :] = 1e-120        
+
+        for idx in range(idx_min, idx_max-Ncols, Ncols//2):
+            # Compute naive profile based on clipped 2D (32, 32) post stamps
+            K = naive_profile(data_tmp[:, idx:idx+Ncols], ivar_tmp[:, idx:idx+Ncols], L_trim=-1)
+            # Median filtering to reduce noise
+            K = median_filter(K, size=5)
+    #             # Savgol filtering of the naive profile         
+    #             K_filtered = savgol_filter(K, window_length=9, polyorder=3)
+            # Compute the center
+            row_centers.append(np.argmax(K))
+
+        # Compute the extraction profile using the above computed center and using extraction width.
+        row_centers = np.asarray(row_centers)
+        row_centers = row_centers[(row_centers > 9) & (row_centers < 21)]
+        mu = np.round(np.median(row_centers))
+        K_T = K_gauss_profile(mu, sig_K).reshape((K.size, 1))
+
+        # ---- 1D extraction performed here
         spec1D_ivar = np.sum(np.square(K_T) * ivar, axis=0)
         spec1D = np.sum(K_T * data * ivar, axis=0) / spec1D_ivar
-        
+
+        # ---- Save the extracted spectrum
         data_ivar_1D[specnum, 0] = spec1D
-        data_ivar_1D[specnum, 1] = spec1D_ivar
+        data_ivar_1D[specnum, 1] = spec1D_ivar        
+
+        if fname_prefix is not None:
+            plt.close()
+            # ---- Spec figures
+            fname = fname_prefix + "spec%d-2D.png" %specnum
+            fig, ax = plt.subplots(1, figsize=(17, 1))
+            ax.imshow(data, aspect="auto", cmap="gray", interpolation="none", vmin=-0.5, vmax=0.5)
+            ax.axhline(y=mu+0.5, c="red", ls="--", lw=0.4)
+            plt.savefig(fname, dpi=200, bbox_inches="tight")
+            plt.close()
+
+            # ---- Histogram of centers determined
+            fname = fname_prefix + "spec%d-centers.png" %specnum
+            fig, ax = plt.subplots(1, figsize=(7, 3))
+            ax.hist(row_centers, bins=np.arange(0.5, 32.5, 1), histtype="step", color="black", normed=True)
+            ax.plot(K_T, c="red", label="K_stellar")
+            ax.axvline(x=mu, c="red", ls="--", lw=0.4)
+            plt.savefig(fname, dpi=200, bbox_inches="tight")
+            plt.close()
+
     return data_ivar_1D
-        
+
+def wavegrid_from_header(header, Ncols):
+    """
+    Construct a linear grid based on the header
+    and a user specified number of columns.
+    """
+    x0 = header["CRVAL1"] * 10
+    dx = header["CDELT1"] * 10
+    return x0 + np.arange(0, Ncols, 1.) * dx
+    
