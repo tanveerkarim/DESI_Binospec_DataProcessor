@@ -17,13 +17,13 @@ def ModelO2(wavelength_array, width, Amp = 1):
 	return Amp*(Gaussian(wavelength_array, lambda0-separation, width) + Gaussian(wavelength_array, lambda0+separation, width))
 
 def Window(wavelength_array, ngal, pixel_size, window_size_multiplier):
-	"""Returns windows to run the Model function over to speed up calculation
+"""Returns windows to run the Model function over to speed up calculation
 	Parameters: wavelength_array: Full wavelength array of MMT BinoSpec. This is constant
 				ngal: number of galaxies in a given data file
 				pixel_size: width of pixels in wavelength_array
 				window_size_multiplier: Multiple this with pixel size to get width of window in wavelength_array space
 	Returns: nwindow_ndarray: l x m x n ndarray where l = ngal, m = number of windows and 
-							  n = (pixel_size*window_size_multiplier)//2 + 1
+							n = (pixel_size*window_size_multiplier)//2 + 1
 	"""
 	
 	nwindow = len(wavelength_array) - window_size_multiplier//2 #number of windows per galaxy. 
@@ -38,6 +38,6 @@ def Window(wavelength_array, ngal, pixel_size, window_size_multiplier):
 	print(nwindow_array[0])
 	#Repeat nwindow_arary ngal times 
 	#https://stackoverflow.com/questions/32171917/copy-2d-array-into-3rd-dimension-n-times-python
-	nwindow_ndarray = np.repeat(nwindow_array[:, :, np.newaxis], ngal, axis=2)
+	nwindow_ndarray = np.repeat(nwindow_array[np.newaxis, :, :], ngal, axis=0)
 
 	return nwindow_ndarray
