@@ -35,7 +35,7 @@ def Window(wavelength_array, ngal, pixel_size, window_size_multiplier):
 		for i in range(nwindow):
 			tmp = np.arange(wavelength_array[i], wavelength_array[i] + pixel_size*(window_size_multiplier), \
 										 pixel_size)
-			if(tmp[-1] > wavelength_array[-1]):
+			if(tmp[-1] > (wavelength_array[-1] + pixel_size)):
 				break
 			else:
 				nwindow_array.append(tmp)
