@@ -2,6 +2,27 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.style.use('ggplot')
 
+def wave_grid(data):
+	"""Returns wavegrid based on header file from data"""
+	
+	crval1 = float(str(data['headers'][1]).split("CRVAL1")[1].split("=")[1].split("/")[0]) #Starting value
+	cdelt1 = float(str(data['headers'][1]).split("CDELT1")[1].split("=")[1].split("/")[0]) #Pixel size
+	
+	collapsedSpectrum = data['data_ivar'][:, 0, :]
+	
+	wave_grid = crval1 + cdelt1 * np.arange(collapsedSpectrum[1].shape[0])
+	wave_grid *= 10 #Convert wave_grid to Angstrom from nm
+	
+	return wave_grid
+
+def lambda_to_z(wavelength):
+	"""Converts wavelength grid to redshift grid"""
+	
+	separation = (3729.875-3727.092)/2 #separation between the emission lines
+	lambda0 = 3727.092 + separation #Midpoint of the gaussian emission lines in restframe
+	
+	return (wavelength/lambda0 - 1)
+
 def ModelO2(wavelength_array, width, Amp = 1):
 	"""Returns the [OII] doublet model
 	Parameters: wavelength_array: Full wavelength array of MMT BinoSpec. This is constant.
