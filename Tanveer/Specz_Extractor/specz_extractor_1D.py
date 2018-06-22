@@ -48,36 +48,21 @@ def Model(z, wg2, width, Amp = 1):
         
     return model
 
-def Window(wavelength_array, ngal, pixel_size, window_size_multiplier):
-		"""Returns windows to run the Model function over to speed up calculation
-		Parameters: wavelength_array: Full wavelength array of MMT BinoSpec. This is constant
-					ngal: number of galaxies in a given data file
-					pixel_size: width of pixels in wavelength_array
-					window_size_multiplier: Multiple this with pixel size to get width of window in wavelength_array space
-		Returns: nwindow_ndarray: l x m x n ndarray where l = ngal, m = number of windows and 
-								n = pixels per windowsize
-		"""
+def Window(z, wg, z_grid, window_width = 0.005):
+    """Returns a range of pixel in the specified window width
+    
+    Parameters
+    ----------
+    z: Centre of the window
+    wg: wave grid that needs to be windowed
+    z_grid: redshift grid of the wave_grid
+    window_width: size of the window in redshift space
+    
+    Returns
+    -------
+    windowed_array: windowed array of the windowing_array    
+    """
 
-		nwindow = (wavelength_array[-1] - wavelength_array[0])//pixel_size #number of windows per galaxy. 
-														#It is of this form b/c beyond this window exceeds the wavelength_array
-		nwindow_array = []
-
-		#Generate nwindow windows
-		for i in range(nwindow):
-			tmp = np.arange(wavelength_array[i], wavelength_array[i] + pixel_size*(window_size_multiplier), \
-										 pixel_size)
-			if(tmp[-1] > (wavelength_array[-1] + pixel_size)):
-				break
-			else:
-				nwindow_array.append(tmp)
-
-		nwindow_array = np.asarray(nwindow_array)
-		
-		#Repeat nwindow_arary ngal times 
-		#https://stackoverflow.com/questions/32171917/copy-2d-array-into-3rd-dimension-n-times-python
-		nwindow_ndarray = np.repeat(nwindow_array[np.newaxis, :, :], ngal, axis=0)
-
-		return nwindow_ndarray
-		
-
-		
+    windowed_array = wg[(z_grid > (z - window_width)) & (z_grid < (z + window_width))]
+    
+    return windowed_array
