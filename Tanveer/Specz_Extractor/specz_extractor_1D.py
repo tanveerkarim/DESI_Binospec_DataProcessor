@@ -66,3 +66,51 @@ def Window(z, wg, z_grid, window_width = 0.005):
     windowed_array = wg[(z_grid > (z - window_width)) & (z_grid < (z + window_width))]
     
     return windowed_array
+
+
+def SNR_calculator(data):
+    z_range = np.arange(0.7, 1.6, 0.0001)
+    widths = np.arange(.5, 1., .1)
+    
+    #Call data
+    image = data['data_ivar'][:, 0, :]
+    ivar = data['data_ivar'][:, 1, :]
+    wg = wave_grid(data)
+    z_grid = lambda_to_z(wg) #Convert wavelength space to redshift space
+    
+    results = np.zeros((z_range.size, image.shape[0], widths.size))
+    
+    for i, z in enumerate(z_range):
+        wg2 = Window(z, wg, z_grid)
+        
+        model = Model(z, wg2, widths)
+        
+        #Find the idx of the edges of the windows and slice the image file to multiply with modelPrime
+        minidx = np.where(wg == np.min(wg2))[0][0] 
+        maxidx = np.where(wg == np.max(wg2))[0][0]
+        imageSliced = image[:,minidx:maxidx+1]
+        imageSliced = imageSliced[:, :, np.newaxis] #Broadcasting
+        ivarSliced = ivar[:,minidx:maxidx+1]
+        ivarSliced = ivarSliced[:, :, np.newaxis] #Broadcasting
+        imagePrimeSliced = imageSliced*np.sqrt(ivarSliced)
+        
+        Mprime = np.sqrt(ivarSliced)*model
+        Denominator = Mprime**2
+        Denominator = np.sum(Denominator, axis = 1)
+        Numerator = Mprime*imagePrimeSliced
+        Numerator = np.sum(Numerator, axis = 1)
+        
+        """
+        sigmaA^(-2) = M'.M'
+        A = (D'.M')/(M'.M') => (D'.M')*(sigmaA^(2))
+        """
+        
+        Amp = Numerator/Denominator
+        sigmaA = np.sqrt(1./Denominator)
+        SNR = Amp/sigmaA
+        
+        results[i] = SNR
+        
+    results = results.reshape((image.shape[0], z_range.size, widths.size))
+    
+    return results
