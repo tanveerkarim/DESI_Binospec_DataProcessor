@@ -2,6 +2,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.style.use('ggplot')
 
+def datareader(mask_name, grating, dir_name = "../../../DATA_MAY18/spec1d/"):
+	"""Reads mask data for use by the other functions in this module"""
+	
+	fname = mask_name + '-' + str(grating) + '-' + 'spec1d.npz'
+	data = np.load(dir_name + fname)
+	
+	return data
+
 def wave_grid(data):
 	"""Returns wavegrid based on header file from data"""
 	
@@ -23,6 +31,25 @@ def lambda_to_z(wavelength):
 	
 	return (wavelength/lambda0 - 1)
 
+def Window(z, wg, z_grid, window_width = 0.005):
+    """Returns a range of pixel in the specified window width
+    
+    Parameters
+    ----------
+    z: Centre of the window
+    wg: wave grid that needs to be windowed
+    z_grid: redshift grid of the wave_grid
+    window_width: size of the window in redshift space
+    
+    Returns
+    -------
+    windowed_array: windowed array of the windowing_array    
+    """
+
+    windowed_array = wg[(z_grid > (z - window_width)) & (z_grid < (z + window_width))]
+    
+    return windowed_array
+	
 def Model(z, wg2, width, Amp = 1):
     """Returns Gaussian filter model at redshift z
     
@@ -48,31 +75,11 @@ def Model(z, wg2, width, Amp = 1):
         
     return model
 
-def Window(z, wg, z_grid, window_width = 0.005):
-    """Returns a range of pixel in the specified window width
-    
-    Parameters
-    ----------
-    z: Centre of the window
-    wg: wave grid that needs to be windowed
-    z_grid: redshift grid of the wave_grid
-    window_width: size of the window in redshift space
-    
-    Returns
-    -------
-    windowed_array: windowed array of the windowing_array    
-    """
-
-    windowed_array = wg[(z_grid > (z - window_width)) & (z_grid < (z + window_width))]
-    
-    return windowed_array
-
-
 def SNR_calculator(data):
     z_range = np.arange(0.7, 1.6, 0.0001)
     widths = np.arange(.5, 1., .1)
     
-    #Call data
+    #Read data
     image = data['data_ivar'][:, 0, :]
     ivar = data['data_ivar'][:, 1, :]
     wg = wave_grid(data)
@@ -114,3 +121,22 @@ def SNR_calculator(data):
     results = results.reshape((image.shape[0], z_range.size, widths.size))
     
     return results
+
+def Plotter2D(SNRdata, idx):
+	"""Returns redshift vs. width plot with SNR strength.
+	
+	Parameters
+	----------
+	SNRdata: SNR datacube to be plotted. Output of function SNR_calculator.
+	idx: Galaxy index that is to be plotted from SNRdata. 
+	
+	Returns
+	-------
+	PDF of the 2D plot
+	"""
+	
+	import matplotlib.pyplot as plt
+	
+	plt.imshow(SNRdata[idx]), aspect = 'auto')
+	plt.colorbar()
+	
