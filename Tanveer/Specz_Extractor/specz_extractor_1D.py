@@ -170,3 +170,51 @@ def plotterSNR2D(maskname, SNRdata, idx):
 	plt.title('Mask: ' + maskname + ', ' + 'Slit ' + str(idx),  fontsize = 15, fontname = 'serif')
 	plt.savefig("results/SNR2D/"  + maskname + '/' + maskname + '-' + str(idx) + "-SNR2d.pdf", dpi = 600, bbox_inches = None)
 	
+def SNRvz(maskname, idx, z, widths, SNRdata, image, ivar, wavelength_grid):
+	"""Returns SNR vs z plot per slit and redshift and w values
+	Parameters
+	----------
+	maskname: name of the mask + '-' + grating number
+	idx: index of a slit for a given maskname
+	z: 0th output of the SNR_calculator function; redshift range
+	widths: 1st output of the SNR_calculator function; width range
+	SNRdata: 2nd output of the SNR_calculator function; SNR data cube
+	image: spectra 1d -> pass to PeakZoom
+	ivar: inverse variance 1d -> pass to PeakZoom
+	"""	
+	
+	#Find width and z indices for highest SNR
+	w, redshift = np.unravel_index(np.nanargmax(SNR_tmp[idx]), np.array(SNR_tmp[idx]).shape)
+	
+	#Generate SNR vs z plot per slit
+	plt.plot(z, SNRdata[idx, w])
+	plt.axhline(7, c = 'red') #Threshold of SNR = 7
+	plt.ylabel('SNR', fontsize = 15, fontname = 'serif')
+	plt.xlabel('redshift', fontsize = 15, fontname = 'serif')
+	plt.title('Mask: ' + maskname + ', ' + 'Slit ' + str(idx) +"\n" +\
+          "z = " + str(np.round(z[redshift], 3)) + ', w = ' + str(np.round(widths[w],2)) \
+          , fontsize = 15, fontname = 'serif')
+	#plt.xlim([z[redshift] - .1, z[redshift] + .1])
+	plt.savefig("results/SNRvsRedshift/"  + maskname + '/' + maskname + '-' + str(idx) + "-SNR_vs_z.pdf", dpi = 600, bbox_inches = None)
+	
+	def PeakZoom(maskname, idx, image, ivar, wavelength_grid):
+		"""Returns zoomed-in 1d spectra and inverse variance plots around the maxima redshift"""
+		ranges = 75 #Arbitrary value
+		
+		imagetmp = image[idx, :]
+		ivartmp = ivar[idx, :]
+
+		f, axarr = plt.subplots(2, sharex=True)
+		axarr[0].plot(wave_grid(data), imagetmp)
+		axarr[0].set_title('Mask: ' + maskname + ', ' + 'Slit ' + str(idx) + "\n" + "1D spectra" \
+						,  fontsize = 15, fontname = 'serif')
+		axarr[1].plot(wavelength_grid(data), ivartmp)
+		axarr[1].set_title('1D inverse variance', fontsize = 15, fontname = 'serif')
+		axarr[0].set_xlim([lambda0*(1+z[redshift])-ranges, lambda0*(1+z[redshift])+ranges])
+		axarr[1].set_xlim([lambda0*(1+z[redshift])-ranges, lambda0*(1+z[redshift])+ranges])
+		
+		plt.savefig("results/PeakZoom/" + maskname + '/' + maskname + '-' + str(idx) + "-zoom1d.pdf", dpi = 600, bbox_inches = None)
+	
+	PeakZoom(maskname, idx, image, ivar, wavelength_grid)
+	
+	return z[redshift], widths[w]
