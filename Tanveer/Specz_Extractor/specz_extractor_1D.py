@@ -2,10 +2,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.style.use('ggplot')
 
-def datareader(mask_name, grating, dir_name = "../../../DATA_MAY18/spec1d/"):
-	"""Reads mask data for use by the other functions in this module"""
+def datareader(maskname, dir_name = "../../../DATA_MAY18/spec1d/"):
+	"""Reads mask data for use by the other functions in this module
+	Parameters
+	----------
+	maskname: name of the mask + '-' + grating number
+	"""
 	
-	fname = mask_name + '-' + str(grating) + '-' + 'spec1d.npz'
+	fname = maskname + '-' + 'spec1d.npz'
 	data = np.load(dir_name + fname)
 	
 	return data
@@ -122,7 +126,31 @@ def SNR_calculator(data):
     
     return results
 
-def Plotter2D(SNRdata, idx):
+def plotterSpectra1D(maskname, idx):
+	"""Returns plots of the 1d spectra and the inverse variance
+	
+	Parameters
+	----------
+	maskname: Name of the mask with grating
+	idx: Index number of the slit; ignore idx = 0
+	"""
+	
+	data = datareader(maskname)
+	image = data['data_ivar'][:, 0, :]
+	ivar = data['data_ivar'][:, 1, :]
+	
+	imagetmp = image[idx, :]
+	ivartmp = ivar[idx, :]
+	
+	f, axarr = plt.subplots(2, sharex=True)
+	axarr[0].plot(wave_grid(data), imagetmp)
+	axarr[0].set_title('Mask: ' + maskname + ', ' + 'Slit ' + str(idx) + "\n" + "1D spectra" \
+					,  fontsize = 15, fontname = 'serif')
+	axarr[1].plot(wave_grid(data), ivartmp)
+	axarr[1].set_title('1D inverse variance', fontsize = 15, fontname = 'serif')
+	plt.savefig('results/spectra1d/' + maskname + '-' + str(idx) + '-spectra1d.pdf', dpi = 600, bbox_inches = None)
+
+def Plotter2D(SNRdata, idx, maskname):
 	"""Returns redshift vs. width plot with SNR strength.
 	
 	Parameters
@@ -137,6 +165,11 @@ def Plotter2D(SNRdata, idx):
 	
 	import matplotlib.pyplot as plt
 	
-	plt.imshow(SNRdata[idx]), aspect = 'auto')
+	plt.imshow(SNRdata[idx], aspect = 'auto')
 	plt.colorbar()
+	plt.xlabel('width', fontsize = 15, fontname = 'serif')
+	plt.ylabel('redshift', fontsize = 15, fontname = 'serif')
+	#plt.title('Mask: ' + maskname + ', ' + 'Galaxy ' + str(idx),  fontsize = 15, fontname = 'serif')
+	plt.title('Galaxy ' + str(idx),  fontsize = 15, fontname = 'serif')
+	plt.savefig('Galaxy ' + str(idx) + '.pdf', dpi = 600)
 	
