@@ -126,16 +126,14 @@ def SNR_calculator(data):
     
     return results
 
-def plotterSpectra1D(maskname, idx):
+def plotterSpectra1D(maskname, data, idx):
 	"""Returns plots of the 1d spectra and the inverse variance
 	
 	Parameters
 	----------
-	maskname: Name of the mask with grating
 	idx: Index number of the slit; ignore idx = 0
 	"""
 	
-	data = datareader(maskname)
 	image = data['data_ivar'][:, 0, :]
 	ivar = data['data_ivar'][:, 1, :]
 	
@@ -148,9 +146,10 @@ def plotterSpectra1D(maskname, idx):
 					,  fontsize = 15, fontname = 'serif')
 	axarr[1].plot(wave_grid(data), ivartmp)
 	axarr[1].set_title('1D inverse variance', fontsize = 15, fontname = 'serif')
-	plt.savefig('results/spectra1d/' + maskname + '-' + str(idx) + '-spectra1d.pdf', dpi = 600, bbox_inches = None)
+	plt.savefig('results/spectra1d/' + maskname + '/' + maskname + '-' + str(idx) + '-spectra1d.pdf', dpi = 600, bbox_inches = None)
+	plt.close()
 
-def Plotter2D(SNRdata, idx, maskname):
+def plotterSNR2D(maskname, SNRdata, idx):
 	"""Returns redshift vs. width plot with SNR strength.
 	
 	Parameters
@@ -163,13 +162,11 @@ def Plotter2D(SNRdata, idx, maskname):
 	PDF of the 2D plot
 	"""
 	
-	import matplotlib.pyplot as plt
-	
-	plt.imshow(SNRdata[idx], aspect = 'auto')
+	plt.imshow(SNRdata[idx], aspect='auto', interpolation='None', \
+			extent=[np.min(z), np.max(z), np.min(widths), np.max(widths)], vmin=0, vmax=7)
 	plt.colorbar()
-	plt.xlabel('width', fontsize = 15, fontname = 'serif')
-	plt.ylabel('redshift', fontsize = 15, fontname = 'serif')
-	#plt.title('Mask: ' + maskname + ', ' + 'Galaxy ' + str(idx),  fontsize = 15, fontname = 'serif')
-	plt.title('Galaxy ' + str(idx),  fontsize = 15, fontname = 'serif')
-	plt.savefig('Galaxy ' + str(idx) + '.pdf', dpi = 600)
+	plt.ylabel('width', fontsize = 15, fontname = 'serif')
+	plt.xlabel('redshift', fontsize = 15, fontname = 'serif')
+	plt.title('Mask: ' + maskname + ', ' + 'Slit ' + str(idx),  fontsize = 15, fontname = 'serif')
+	plt.savefig("results/SNR2D/"  + maskname + '/' + maskname + '-' + str(idx) + "-SNR2d.pdf", dpi = 600, bbox_inches = None)
 	
