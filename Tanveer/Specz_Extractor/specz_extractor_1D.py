@@ -80,7 +80,7 @@ def Model(z, wg2, width, Amp = 1):
     return model
 
 def SNR_calculator(data):
-    z_range = np.arange(0.7, 1.6, 0.0001)
+    z_range = np.arange(0.7, 1.6, 0.001)
     widths = np.arange(.5, 1., .1)
     
     #Read data
@@ -90,7 +90,7 @@ def SNR_calculator(data):
     z_grid = lambda_to_z(wg) #Convert wavelength space to redshift space
     
     results = np.zeros((z_range.size, image.shape[0], widths.size))
-    
+
     for i, z in enumerate(z_range):
         wg2 = Window(z, wg, z_grid)
         
@@ -121,10 +121,10 @@ def SNR_calculator(data):
         SNR = Amp/sigmaA
         
         results[i] = SNR
-        
-    results = results.reshape((image.shape[0], z_range.size, widths.size))
+
+    results = results.transpose([1, 2, 0]) #This maintains the indices
     
-    return results
+    return z_range, widths, results
 
 def plotterSpectra1D(maskname, data, idx):
 	"""Returns plots of the 1d spectra and the inverse variance
