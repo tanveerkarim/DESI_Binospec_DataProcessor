@@ -1,3 +1,7 @@
+"""This module contains all the necessary functions to do MMT BinoSpec 1D analysis.
+Authors: Tanveer Karim and Jae Lee
+Latest version: 09-Jul-2018"""
+
 from astropy.io import fits
 import numpy as np
 import matplotlib.pyplot as plt
