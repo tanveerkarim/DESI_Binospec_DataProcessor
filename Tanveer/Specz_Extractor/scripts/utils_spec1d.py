@@ -116,6 +116,10 @@ def SNR_calculator(maskname, data):
 		minidx = np.where(wg == np.min(wg2))[0][0] 
 		maxidx = np.where(wg == np.max(wg2))[0][0]
 		imageSliced = image[:,minidx:maxidx+1]
+		
+		medians = np.median(imageSliced, axis = 1) #Median continuum subtraction
+		imageSliced = imageSliced - medians[:, np.newaxis]
+		
 		imageSliced = imageSliced[:, :, np.newaxis] #Broadcasting
 		ivarSliced = ivar[:,minidx:maxidx+1]
 		ivarSliced = ivarSliced[:, :, np.newaxis] #Broadcasting
