@@ -64,7 +64,7 @@ def Window(z, wg, z_grid, window_width = 0.008):
 	
 	return windowed_array
 	
-def Model(z, wg2, width, Amp = 1):
+def Model(z, wg2, width):#, Amp = 1):
 	"""Returns Gaussian filter model at redshift z
 	
 	Parameters
@@ -84,8 +84,10 @@ def Model(z, wg2, width, Amp = 1):
 	lambda0 = lambda_r27 + separation_r/2 #Midpoint of the gaussian emission lines in restframe
 	lambda_obs = lambda0*(1 + z) #Observed wavelength of of the midpoint
 	Gaussian = lambda x, mean, std: (1/np.sqrt(2*np.pi*std**2))*np.exp(-((x[:, np.newaxis] - mean)/std)**2)
-
-	model = Amp/2*(Gaussian(wg2, lambda_obs - separation_r, width) + Gaussian(wg2, lambda_obs + separation_r, width))
+	
+	relative_strength = 0.35 #http://www.ucolick.org/~simard/phd/root/node21.html
+	#model = Amp*(Gaussian(wg2, lambda_obs - separation_r, width) + Gaussian(wg2, lambda_obs + separation_r, width))
+	model = (0.35*Gaussian(wg2, lambda_obs - separation_r, width) + Gaussian(wg2, lambda_obs + separation_r, width))
 		
 	return model
 
