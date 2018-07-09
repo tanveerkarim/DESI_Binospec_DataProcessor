@@ -96,7 +96,36 @@ def SNR_calculator(maskname, data):
 	elif(maskname[-3:] == '600'):
 		z_range = np.arange(0.7, 1.61, 0.001)
 	
-	widths = np.arange(.5, 1., .1)
+	"""Gaussian width, sigma = sqrt(sigma_lambda^2 + sigma_slit^2) where, 
+	sigma_lambda = sigma_v/c*lambda(z); sigma_v = [0, 300] km/s
+	sigma_slit = 3.3/sqrt(12)*delLambda_pixel	
+	"""
+	
+	def widthlist(z):
+		"""Returns an array of possible Gaussian widths for the [OII] doublet
+		model testing"""
+		
+		def lambda_obs(z):
+			"""Returns lambda observed of the Gaussian doublet centroid as a 
+			function of redshift"""
+			
+			#rest frame wavelength of the [OII] doublets
+			lambda_r27 = 3727.092; 
+			lambda_r29 = 3729.875 
+			
+			separation_r = (lambda_r29 - lambda_r27) #separation between the emission lines in rest frame
+			lambda0 = lambda_r27 + separation_r/2 #Midpoint of the gaussian emission lines in restframe
+			
+			return lambda_obs = lambda0*(1 + z) #Observed wavelength of of the midpoint
+	
+		delLambda_pixel = float(str(data['headers'][1]).split("CDELT1")[1]\
+		.split("=")[1].split("/")[0])*10. #size of the pixel in angstrom
+		sigma_slit = 3.3/sqrt(12)*delLambda_pixel
+		sigma_v = np.arange(0, 301, 50) #[0, 300] km/s in steps of 50 km/s
+		c = 299792.458 #km/s
+		sigma_lambda = sigma_v/c*lambda_obs(z)
+	
+		return np.sqrt(sigma_lambda**2 + sigma_slit**2)
 	
 	#Read data
 	image = data['data_ivar'][:, 0, :]
@@ -109,7 +138,8 @@ def SNR_calculator(maskname, data):
 	
 	for i, z in enumerate(z_range):
 		wg2 = Window(z, wg, z_grid)
-		
+		widths = widthlist(z)
+		print(widths[-1])
 		model = Model(z, wg2, widths)
 		
 		#Find the idx of the edges of the windows and slice the image file to multiply with modelPrime
