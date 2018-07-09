@@ -105,6 +105,17 @@ def SNR_calculator(maskname, data):
 	sigma_slit = 3.3/sqrt(12)*delLambda_pixel	
 	"""
 	
+	delLambda_pixel = float(str(data['headers'][1]).split("CDELT1")[1]\
+		.split("=")[1].split("/")[0])*10. #size of the pixel in angstrom
+	sigma_slit = 3.3/sqrt(12)*delLambda_pixel
+	sigma_v = np.arange(0, 301, 50) #[0, 300] km/s in steps of 50 km/s
+	c = 299792.458 #km/s
+	#rest frame wavelength of the [OII] doublets
+	lambda_r27 = 3727.092; 
+	lambda_r29 = 3729.875 
+	separation_r = (lambda_r29 - lambda_r27) #separation between the emission lines in rest frame
+	lambda0 = lambda_r27 + separation_r/2 #Midpoint of the gaussian emission lines in restframe
+			
 	def widthlist(z):
 		"""Returns an array of possible Gaussian widths for the [OII] doublet
 		model testing"""
@@ -113,20 +124,8 @@ def SNR_calculator(maskname, data):
 			"""Returns lambda observed of the Gaussian doublet centroid as a 
 			function of redshift"""
 			
-			#rest frame wavelength of the [OII] doublets
-			lambda_r27 = 3727.092; 
-			lambda_r29 = 3729.875 
-			
-			separation_r = (lambda_r29 - lambda_r27) #separation between the emission lines in rest frame
-			lambda0 = lambda_r27 + separation_r/2 #Midpoint of the gaussian emission lines in restframe
-			
-			return lambda_obs = lambda0*(1 + z) #Observed wavelength of of the midpoint
-	
-		delLambda_pixel = float(str(data['headers'][1]).split("CDELT1")[1]\
-		.split("=")[1].split("/")[0])*10. #size of the pixel in angstrom
-		sigma_slit = 3.3/sqrt(12)*delLambda_pixel
-		sigma_v = np.arange(0, 301, 50) #[0, 300] km/s in steps of 50 km/s
-		c = 299792.458 #km/s
+			return lambda0*(1 + z)
+		
 		sigma_lambda = sigma_v/c*lambda_obs(z)
 	
 		return np.sqrt(sigma_lambda**2 + sigma_slit**2)
@@ -137,8 +136,11 @@ def SNR_calculator(maskname, data):
 	wg = wave_grid(data)
 	z_grid = lambda_to_z(wg) #Convert wavelength space to redshift space
 	
-	results = np.zeros((z_range.size, image.shape[0], widths.size))
-	Amps = np.zeros((z_range.size, image.shape[0], widths.size)) #Save all the amplitudes to pass this to the PeakZoom function
+	#sigma_v size same as number of Gaussian width models
+	results = np.zeros((z_range.size, image.shape[0], sigma_v.size))
+	
+	#Save all the amplitudes to pass this to the PeakZoom function
+	Amps = np.zeros((z_range.size, image.shape[0], sigma_v.size)) 
 	
 	for i, z in enumerate(z_range):
 		wg2 = Window(z, wg, z_grid)
