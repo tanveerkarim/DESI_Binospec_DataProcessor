@@ -110,7 +110,7 @@ def SNR_calculator(maskname, data):
 	delLambda_pixel = float(str(data['headers'][1]).split("CDELT1")[1]\
 		.split("=")[1].split("/")[0])*10. #size of the pixel in angstrom
 	sigma_slit = 3.3/np.sqrt(12)*delLambda_pixel
-	sigma_v = np.arange(0, 301, 50) #[0, 300] km/s in steps of 50 km/s
+	sigma_v = np.arange(0, 301, 25) #[0, 300] km/s in steps of 50 km/s
 	c = 299792.458 #km/s
 	#rest frame wavelength of the [OII] doublets
 	lambda_r27 = 3727.092; 
