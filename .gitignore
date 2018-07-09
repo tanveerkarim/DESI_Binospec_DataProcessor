@@ -5,3 +5,5 @@ Tanveer/*.pdf
 Tanveer/Specz_Extractor/__pycache__/*
 Tanveer/Specz_Extractor/.ipynb_checkpoints/*
 Tanveer/Specz_Extractor/results/*
+Tanveer/Specz_Extractor/notebooks/.*
+Tanveer/Specz_Extractor/scripts/__pycache__/*
