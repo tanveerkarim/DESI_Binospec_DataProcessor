@@ -5,7 +5,7 @@ This script generates:
 3. histograms of redshifts and widths per mask
 """
 
-from specz_extractor_1D import datareader, SNR_calculator, plotterSNR2D, SNRvz, wave_grid
+from utils_spec1d import datareader, SNR_calculator, plotterSNR2D, SNRvz, wave_grid
 import numpy as np
 import matplotlib.pyplot as plt
 plt.style.use('ggplot')
