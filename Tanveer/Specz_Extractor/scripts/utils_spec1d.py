@@ -64,7 +64,7 @@ def Window(z, wg, z_grid, window_width = 0.008):
 	
 	return windowed_array
 	
-def Model(z, wg2, width):#, Amp = 1):
+def Model(z, wg2, width, Amp = 1):
 	"""Returns Gaussian filter model at redshift z
 	
 	Parameters
@@ -87,7 +87,7 @@ def Model(z, wg2, width):#, Amp = 1):
 	
 	relative_strength = 0.35 #http://www.ucolick.org/~simard/phd/root/node21.html
 	#model = Amp*(Gaussian(wg2, lambda_obs - separation_r, width) + Gaussian(wg2, lambda_obs + separation_r, width))
-	model = (0.35*Gaussian(wg2, lambda_obs - separation_r, width) + Gaussian(wg2, lambda_obs + separation_r, width))
+	model = Amp*(0.35*Gaussian(wg2, lambda_obs - separation_r, width) + Gaussian(wg2, lambda_obs + separation_r, width))
 		
 	return model
 
@@ -248,8 +248,8 @@ def SNRvz(maskname, idx, z, widths, SNRdata, Ampdata, image, ivar, wavelength_gr
 	
 	def PeakZoom(maskname, idx, z, widths, SNRdata, Ampdata, image, ivar, wavelength_grid, w, redshift):
 		"""Returns zoomed-in 1d spectra and inverse variance plots around the maxima redshift
-		maskname: name of the mask + '-' + grating number
-		idx: index of a slit for a given maskname
+	medians = np.median(imageSliced, axis = 1) #Median continuum subtraction	maskname: name of the mask + '-' + grating number
+	imageSliced = imageSliced - medians[:, np.newaxis]	idx: index of a slit for a given maskname
 		z: 0th output of the SNR_calculator function; redshift range
 		widths: 1st output of the SNR_calculator function; width range
 		SNRdata: 2nd output of the SNR_calculator function; SNR data cube
@@ -260,28 +260,40 @@ def SNRvz(maskname, idx, z, widths, SNRdata, Ampdata, image, ivar, wavelength_gr
 		redshift: redshift indices of the best models
 		"""
 		
-		ranges = 20 #Arbitrary value
+		z_grid = lambda_to_z(wavelength_grid) #Convert wavelength space to redshift space
+		wgSliced = Window(z[redshift], wavelength_grid, z_grid)
 		
-		imagetmp = image[idx, :]
-		ivartmp = ivar[idx, :]
+		#Find the idx of the edges of the windows and slice the image file to multiply with modelPrime
+		minidx = np.where(wavelength_grid == np.min(wgSliced))[0][0] 
+		maxidx = np.where(wavelength_grid == np.max(wgSliced))[0][0]
+		imageSliced = image[idx, minidx:maxidx+1]
+		ivarSliced = ivar[idx, minidx:maxidx+1]
+		medians = np.median(imageSliced) #Median continuum subtraction
+		imageSliced -= medians
 		
 		#Corresponding wavelength
 		lambda0 = 3728.4835 #From calculation
 		
-		wg = wavelength_grid[(wavelength_grid > (1+z[redshift])*(3728.4835-20.)) & (wavelength_grid < (1+z[redshift])*(3728.4835+20.))]
+		#wg = wavelength_grid[(wavelength_grid > (1+z[redshift])*(3728.4835-20.)) & (wavelength_grid < (1+z[redshift])*(3728.4835+20.))]
 		f, axarr = plt.subplots(2, sharex=True)
-		axarr[0].plot(wavelength_grid, imagetmp, c = 'k')
-		axarr[0].set_title('Mask: ' + maskname + ', ' + 'Slit ' + str(idx) + "\n" 'Lambda = ' + str(np.round(lambda0*(1+z[redshift])-.1, 3))\
+		#axarr[0].plot(wavelength_grid, imagetmp, c = 'k')
+		axarr[0].plot(wgSliced, imageSliced, c = 'k')
+		axarr[0].set_title('Mask: ' + maskname + ', ' + 'Slit ' + str(idx)\
+		+ "\n" 'Lambda = ' + str(np.round(lambda0*(1+z[redshift])-.1, 3))\
 		, fontsize = 15, fontname = 'serif')
-		axarr[1].plot(wavelength_grid, ivartmp, c = 'k')
+		#axarr[1].plot(wavelength_grid, ivartmp, c = 'k')
+		axarr[1].plot(wgSliced, ivarSliced, c = 'k')
 		#axarr[1].set_title('1D inverse variance', fontsize = 15, fontname = 'serif')
-		axarr[0].set_xlim([lambda0*(1+z[redshift])-ranges, lambda0*(1+z[redshift])+ranges])
-		axarr[1].set_xlim([lambda0*(1+z[redshift])-ranges, lambda0*(1+z[redshift])+ranges])
+		#axarr[0].set_xlim([lambda0*(1+z[redshift])-ranges, lambda0*(1+z[redshift])+ranges])
+		#axarr[1].set_xlim([lambda0*(1+z[redshift])-ranges, lambda0*(1+z[redshift])+ranges])
 		axarr[0].set_ylabel('spectra', fontsize = 15, fontname = 'serif')
 		axarr[1].set_ylabel('inverse variance', fontsize = 15, fontname = 'serif')
-		axarr[0].plot(wg, Model(z[redshift], wg, widths[w], Amp=Ampdata[idx, w, redshift]), c = 'red') #Plot the model
 		
-		plt.savefig("results/PeakZoom/" + maskname + '/' + maskname + '-' + str(idx) + "-zoom1d.pdf", dpi = 600, bbox_inches = None)
+		modelSliced = Model(z[redshift], wgSliced, widths[w], Amp=Ampdata[idx, w, redshift])
+		axarr[0].plot(wgSliced, modelSliced, c = 'red') #Plot the model
+		
+		plt.savefig("results/PeakZoom/" + maskname + '/' + maskname + '-'\
+		+ str(idx) + "-zoom1d.pdf", dpi = 600, bbox_inches = None)
 		plt.close()
 	
 	#Find width and z indices for highest SNR
@@ -294,10 +306,11 @@ def SNRvz(maskname, idx, z, widths, SNRdata, Ampdata, image, ivar, wavelength_gr
 		plt.ylabel('SNR', fontsize = 15, fontname = 'serif')
 		plt.xlabel('redshift', fontsize = 15, fontname = 'serif')
 		plt.title('Mask: ' + maskname + ', ' + 'Slit ' + str(idx) +"\n" +\
-			"z = " + str(np.round(z[redshift], 3)) + ', w = ' + str(np.round(widths[w],2)) \
-			, fontsize = 15, fontname = 'serif')
+			"z = " + str(np.round(z[redshift], 3)) + ', w = '\
+			+ str(np.round(widths[w],2)), fontsize = 15, fontname = 'serif')
 		#plt.xlim([z[redshift] - .1, z[redshift] + .1])
-		plt.savefig("results/SNRvsRedshift/"  + maskname + '/' + maskname + '-' + str(idx) + "-SNR_vs_z.pdf", dpi = 600, bbox_inches = None)
+		plt.savefig("results/SNRvsRedshift/"  + maskname + '/' + maskname\
+		+ '-' + str(idx) + "-SNR_vs_z.pdf", dpi = 600, bbox_inches = None)
 		plt.close()
 		
 		PeakZoom(maskname, idx, z, widths, SNRdata, Ampdata, image, ivar, wavelength_grid, w, redshift)
