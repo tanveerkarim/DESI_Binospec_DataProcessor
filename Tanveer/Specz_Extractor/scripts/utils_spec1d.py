@@ -45,7 +45,7 @@ def lambda_to_z(wavelength):
 	
 	return (wavelength/lambda0 - 1)
 
-def Window(z, wg, z_grid, window_width = 0.005):
+def Window(z, wg, z_grid, window_width = 0.008):
 	"""Returns a range of pixel in the specified window width
 	
 	Parameters
