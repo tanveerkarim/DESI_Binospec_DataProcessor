@@ -27,7 +27,7 @@ ivar = data['data_ivar'][:, 1, :]
 datarows = len(image)
 
 #Calculate the signal-to-noise
-z, widths, SNRdata, Ampdata = SNR_calculator(maskname, data)
+z_range, widths, SNRdata, Ampdata = SNR_calculator(maskname, data)
 
 #Initalise arrays to store redshift and width values
 zmax = np.zeros(datarows)
@@ -40,8 +40,8 @@ start = time()
 wg = wave_grid(data) #wavelength grid of the 1d spectra
 
 for i in range(1, datarows):
-	plotterSNR2D(maskname, idx = i, z = z, widths = widths, SNRdata = SNRdata)
-	zmax[i-1], wmax[i-1] = SNRvz(maskname, idx = i, z=z, widths=widths\
+	plotterSNR2D(maskname, idx = i, z = z_range, widths = widths, SNRdata = SNRdata)
+	zmax[i-1], wmax[i-1] = SNRvz(maskname, idx = i, z=z_range, widths=widths\
 	, SNRdata=SNRdata, Ampdata=Ampdata, image=image, ivar=ivar, wavelength_grid=wg)
 end = time()
 

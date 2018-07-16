@@ -40,8 +40,10 @@ def wave_grid(data):
 def lambda_to_z(wavelength):
 	"""Converts wavelength grid to redshift grid"""
 	
-	separation = (3729.875-3727.092)/2 #separation between the emission lines
-	lambda0 = 3727.092 + separation #Midpoint of the gaussian emission lines in restframe
+	#separation = (3729.875-3727.092)/2 #separation between the emission lines
+	#lambda0 = 3727.092 + separation #Midpoint of the gaussian emission lines in restframe
+	separation = (3728.8 - 3726.1)/2
+	lambda0 = 3726.1 + separation
 	
 	return (wavelength/lambda0 - 1)
 
@@ -79,17 +81,18 @@ def Model(z, wg2, width, Amp = 1):
 	model: Gaussian models in the range of [z - window_width, z + window_width]
 	"""
 	
-	lambda_r27 = 3727.092; lambda_r29 = 3729.875 #rest frame wavelength of the [OII] doublets
-	separation_r = (lambda_r29 - lambda_r27) #separation between the emission lines in rest frame
-	lambda0 = lambda_r27 + separation_r/2 #Midpoint of the gaussian emission lines in restframe
+	#lambda_r27 = 3727.092; lambda_r29 = 3729.875 #rest frame wavelength of the [OII] doublets
+	#separation_r = (lambda_r29 - lambda_r27) #separation between the emission lines in rest frame
+	#lambda0 = lambda_r27 + separation_r/2 #Midpoint of the gaussian emission lines in restframe
+	separation_r = (3728.8 - 3726.1)/2
+	lambda0 = 3726.1 + separation_r
 	lambda_obs = lambda0*(1 + z) #Observed wavelength of of the midpoint
-	Gaussian = lambda x, mean, std: (1/np.sqrt(2*np.pi)*std)*np.exp(-((x[:, np.newaxis] - mean)/std)**2)
+	Gaussian = lambda x, mean, std: (1/np.sqrt(2*np.pi*std**2))*np.exp(-((x[:, np.newaxis] - mean)/std)**2)
 	
 	relative_strength = 0.73 #http://www.ucolick.org/~simard/phd/root/node21.html
 	#model = Amp*(Gaussian(wg2, lambda_obs - separation_r, width) + Gaussian(wg2, lambda_obs + separation_r, width))
-	model = Amp/(1 + relative_strength)*(relative_strength*Gaussian(wg2, \
-	lambda_obs - separation_r, width) + Gaussian(wg2, lambda_obs \
-	+ separation_r, width))
+	model = Amp/(1+relative_strength)*(relative_strength*Gaussian(wg2, lambda_obs - separation_r, width)\
+	+ Gaussian(wg2, lambda_obs + separation_r, width))
 		
 	return model
 
@@ -100,9 +103,9 @@ def SNR_calculator(maskname, data):
 	are chosen by inspecting the header file of the data."""
 	
 	if(maskname[-3:] == '270'):
-		z_range = np.arange(0.677, 1.5, 0.001)
+		z_range = np.arange(0.677, 1.5, 0.0002)
 	elif(maskname[-3:] == '600'):
-		z_range = np.arange(0.7, 1.61, 0.001)
+		z_range = np.arange(0.7, 1.61, 0.0002)
 	
 	"""Gaussian width, sigma = sqrt(sigma_lambda^2 + sigma_slit^2) where, 
 	sigma_lambda = sigma_v/c*lambda(z); sigma_v = [0, 300] km/s
