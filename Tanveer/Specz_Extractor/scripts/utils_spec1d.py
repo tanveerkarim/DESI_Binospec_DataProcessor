@@ -83,12 +83,13 @@ def Model(z, wg2, width, Amp = 1):
 	separation_r = (lambda_r29 - lambda_r27) #separation between the emission lines in rest frame
 	lambda0 = lambda_r27 + separation_r/2 #Midpoint of the gaussian emission lines in restframe
 	lambda_obs = lambda0*(1 + z) #Observed wavelength of of the midpoint
-	Gaussian = lambda x, mean, std: (1/np.sqrt(2*np.pi*std**2))*np.exp(-((x[:, np.newaxis] - mean)/std)**2)
+	Gaussian = lambda x, mean, std: (1/np.sqrt(2*np.pi)*std)*np.exp(-((x[:, np.newaxis] - mean)/std)**2)
 	
-	relative_strength = 0.35 #http://www.ucolick.org/~simard/phd/root/node21.html
+	relative_strength = 0.73 #http://www.ucolick.org/~simard/phd/root/node21.html
 	#model = Amp*(Gaussian(wg2, lambda_obs - separation_r, width) + Gaussian(wg2, lambda_obs + separation_r, width))
-	model = Amp/(1.73)*(0.73*Gaussian(wg2, lambda_obs - separation_r, width)\
-	+ Gaussian(wg2, lambda_obs + separation_r, width))
+	model = Amp/(1 + relative_strength)*(relative_strength*Gaussian(wg2, \
+	lambda_obs - separation_r, width) + Gaussian(wg2, lambda_obs \
+	+ separation_r, width))
 		
 	return model
 
