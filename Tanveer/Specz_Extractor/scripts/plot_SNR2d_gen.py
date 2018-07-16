@@ -41,7 +41,8 @@ wg = wave_grid(data) #wavelength grid of the 1d spectra
 
 for i in range(1, datarows):
 	plotterSNR2D(maskname, idx = i, z = z, widths = widths, SNRdata = SNRdata)
-	zmax[i-1], wmax[i-1] = SNRvz(maskname, idx = i, z=z, widths=widths, SNRdata=SNRdata, Ampdata=Ampdata, image=image, ivar=ivar, wavelength_grid=wg)
+	zmax[i-1], wmax[i-1] = SNRvz(maskname, idx = i, z=z, widths=widths\
+	, SNRdata=SNRdata, Ampdata=Ampdata, image=image, ivar=ivar, wavelength_grid=wg)
 end = time()
 
 tot_time = end - start
