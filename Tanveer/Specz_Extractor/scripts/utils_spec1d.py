@@ -12,7 +12,7 @@ plt.style.use('ggplot')
 
 """------START OF TANVEER'S CODE------"""
 
-def datareader(maskname, dir_name = "../../../../DATA_MAY18/spec1d/"):
+def datareader(maskname, dir_name = "../../../DATA_MAY18/spec1d/"):
 	"""Reads mask data for use by the other functions in this module
 	Parameters
 	----------
