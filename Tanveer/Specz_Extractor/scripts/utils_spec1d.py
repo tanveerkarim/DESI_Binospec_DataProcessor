@@ -47,7 +47,7 @@ def lambda_to_z(wavelength):
 	
 	return (wavelength/lambda0 - 1)
 
-def Window(z, wg, z_grid, window_width = 0.008):
+def Window(z, wg, z_grid, window_width = 0.016):
 	"""Returns a range of pixel in the specified window width
 	
 	Parameters
@@ -159,7 +159,12 @@ def SNR_calculator(maskname, data):
 		maxidx = np.where(wg == np.max(wg2))[0][0]
 		imageSliced = image[:,minidx:maxidx+1]
 		
-		medians = np.median(imageSliced, axis = 1) #Median continuum subtraction
+		#Ignore 0s in imageSliced when calculating median 
+		#Source: https://stackoverflow.com/questions/22049140/how-can-i-ignore-zeros-when-i-take-the-median-on-columns-of-an-array/22049849#22049849
+		medians=np.apply_along_axis(lambda v: np.median(v[v!=0]), 1, imageSliced)
+		medians[np.isnan(medians)]=0.
+		
+		#medians = np.median(imageSliced, axis = 1) #Median continuum subtraction
 		imageSliced = imageSliced - medians[:, np.newaxis]
 		
 		imageSliced = imageSliced[:, :, np.newaxis] #Broadcasting
