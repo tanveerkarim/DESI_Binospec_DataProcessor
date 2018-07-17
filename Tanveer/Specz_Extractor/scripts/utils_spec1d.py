@@ -164,7 +164,6 @@ def SNR_calculator(maskname, data):
 		medians=np.apply_along_axis(lambda v: np.median(v[v!=0]), 1, imageSliced)
 		medians[np.isnan(medians)]=0.
 		
-		#medians = np.median(imageSliced, axis = 1) #Median continuum subtraction
 		imageSliced = imageSliced - medians[:, np.newaxis]
 		
 		imageSliced = imageSliced[:, :, np.newaxis] #Broadcasting
