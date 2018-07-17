@@ -47,7 +47,7 @@ def lambda_to_z(wavelength):
 	
 	return (wavelength/lambda0 - 1)
 
-def Window(z, wg, z_grid, window_width = 0.016):
+def Window(z, wg, z_grid, window_width = 0.008):
 	"""Returns a range of pixel in the specified window width
 	
 	Parameters
@@ -91,7 +91,7 @@ def Model(z, wg2, width, Amp = 1):
 	
 	relative_strength = 0.73 #http://www.ucolick.org/~simard/phd/root/node21.html
 	#model = Amp*(Gaussian(wg2, lambda_obs - separation_r, width) + Gaussian(wg2, lambda_obs + separation_r, width))
-	model = Amp/(1+relative_strength)*(relative_strength*Gaussian(wg2, lambda_obs - separation_r, width)\
+	model = (Amp/(1+relative_strength))*(relative_strength*Gaussian(wg2, lambda_obs - separation_r, width)\
 	+ Gaussian(wg2, lambda_obs + separation_r, width))
 		
 	return model
